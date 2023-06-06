@@ -21,6 +21,7 @@ class Player(pg.sprite.Sprite):
         pg.K_RIGHT: (1, 0),
         pg.K_d: (1, 0),
         pg.K_UP: (0, -1),
+        pg.K_w: (0, -1),
         pg.K_SPACE: (0, -1)
     }
 
@@ -205,11 +206,9 @@ class Player(pg.sprite.Sprite):
         Press Shift
         draw throw curve 
         """        
-        
-        
         pg.event.get()
         #CTRLで予測線
-        if (key_lst[pg.K_RCTRL]):
+        if (key_lst[pg.K_RCTRL] or key_lst[pg.K_LCTRL]):
             if not self.is_pre_predict:
                 self.is_predict = not self.is_predict
                 self.is_pre_predict = True
@@ -568,29 +567,48 @@ class Score:
         self.time = 0
         self.player_init_pos_x = 0
         self.final_score = 0
-        self.font = pg.font.Font(None, 36)
-        self.game_over_font = pg.font.Font(None, 50)
+        self.score_font = pg.font.Font(None, 100)
+        self.game_over_font = pg.font.Font(None, 200)
     
     def modify(self):
         self.score = self.kill_enemy * 100 + self.progress * 100 + self.time        
     def increase(self, points):
         self.time += points
 
-    def render(self, surface, pos):
+    def render(self, surface):
         self.modify()
-        #print(self.progress)
-        score_surface = self.font.render("Score: " + str(self.score), True, (255, 255, 255))
-        surface.blit(score_surface, pos)
+        score_surface = self.score_font.render("Score: " + str(self.score), True, (255, 255, 255))
+        surface.blit(score_surface, (0, 0))
 
     def render_final(self,surface):
         self.modify()
-        final_score_surface = self.font.render(f"GameOver!!  Final Score: " + str(self.score), True, (255, 255, 255))
-        restart_surface = self.font.render("Restart: press:'TAB' Quit: press:'ESC'", True, (255, 255, 255))
-        surface.blit(final_score_surface, (WIDTH / 2, HEIGHT / 2 -50))
-        # surface.blit(restart_surface, (WIDTH / 2, HEIGHT / 2 -150))
-        # restart_surface.blit(surface, (WIDTH / 2, HEIGHT / 2))
-        pg.display.update()
+        final_score_surfaces = [
+            self.game_over_font.render(f"GameOver!!", True, (255, 0, 0)),
+            self.game_over_font.render(f"Result: {self.score}", True, (255, 255, 255))
+        ]
+        rcts = [s.get_rect() for s in final_score_surfaces]
+        rcts[0].center = (WIDTH // 2, HEIGHT // 2 - self.game_over_font.get_height() // 2)
+        rcts[1].center = (WIDTH // 2, HEIGHT // 2 + self.game_over_font.get_height() // 2)
+        for s, r in zip(final_score_surfaces, rcts):
+            surface.blit(s, r)
 
+def render_guide(screen: pg.Surface):
+    font = pg.font.Font(None, 64)
+    guide_surfaces = [
+        font.render("A: Left", True, (255, 255, 255)),
+        font.render("D: Right", True, (255, 255, 255)),
+        font.render("W: Jump", True, (255, 255, 255)),
+        font.render("LClick: Box", True, (255, 255, 255)),
+        font.render("RClick: Bomb", True, (255, 255, 255)),
+        font.render("Shift: Hyper", True, (255, 255, 255)),
+        font.render("Ctrl: Ballistic", True, (255, 255, 255))
+    ]
+    rcts = [s.get_rect() for s in guide_surfaces]
+    for i, r in enumerate(rcts):
+        r.left = 0
+        r.bottom = HEIGHT - (len(rcts) - 1 - i) * font.get_height()
+    for s, r in zip(guide_surfaces, rcts):
+        screen.blit(s, r)
 
 def main():
     """
@@ -608,20 +626,32 @@ def main():
     score = Score()
     score.player_init_pos_x = level.blocks.sprites()[0].rect.centerx
     
+    # BGM再生
+    pg.mixer.init()
+    pg.mixer.music.load("Audio/GamePlayBGM.mp3")
+    pg.mixer.music.play(-1)
+
+    is_bgm_switched = False
     tmr = 0
     clock = pg.time.Clock()
     while True:
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 return
-            if event.type == pg.KEYDOWN and event.key == pg.K_RSHIFT:
-                # 右シフトキーが押されたら
+            if event.type == pg.KEYDOWN and (event.key == pg.K_LSHIFT or event.key == pg.K_RSHIFT):
+                # シフトキーが押されたら
                 player.change_state("hyper", 400)
         if level.blocks.sprites()[0].rect.bottom < -HEIGHT:
-            print(level.blocks.sprites()[0].rect.bottom)
             score.render_final(screen)
-            pg.time.delay(3000)
-            return
+            if not is_bgm_switched:
+                pg.mixer.Sound("Audio/GameOverSE.mp3").play()
+                pg.mixer.music.stop()
+                pg.mixer.music.load("Audio/GameOverBGM.mp3")
+                pg.mixer.music.play(-1)
+                is_bgm_switched = True
+            pg.display.update()
+            continue
+
         
         key_lst = pg.key.get_pressed()
 
@@ -712,7 +742,6 @@ def main():
                             pass
                             
                         #x軸方向の当たり判定
-                        #print(id(obj),obj.is_ground)
                         if not obj.is_ground:
                             if obj2.rect.centerx > obj.rect.right > obj2.rect.left and obj.vel[0] > 0 and abs(obj.vel[1]) > abs(obj.vel[0]):
                                 obj.rect.centerx -= (obj.rect.right - obj2.rect.left) 
@@ -740,11 +769,8 @@ def main():
                 item.vel[0] += throw_arg[0]
                 item.vel[1] += throw_arg[1]
         
-        
-    
         #予測線の接地判定
         collide_lst = pg.sprite.groupcollide(Throw_predict.predicts, level.blocks, True,False)
-        
         
         # ブロックとの衝突判定
         collide_lst = pg.sprite.spritecollide(player, level.blocks, False)
@@ -779,7 +805,7 @@ def main():
                     player.set_vel(vy=0)
 
         #ExplodeとPlayerの当たり判定 あたると吹っ飛ぶ
-        collide_lst = pg.sprite.spritecollide(player,Explode.explodes, False,False)
+        collide_lst = pg.sprite.spritecollide(player,Explode.explodes, False)
         if player.state != "hyper":
             for explode in collide_lst:
                 throw_arg = [0,0]
@@ -790,8 +816,6 @@ def main():
                 throw_arg[1] = -(explode_pos[1] - player_pos[1])/power_border + 0.001
                 
                 player.add_vel(throw_arg[0],throw_arg[1])
-            
-
         
         #BoxにPlayerが乗るための接地判定
         collide_lst = pg.sprite.spritecollide(player, Box.boxes, False)
@@ -830,7 +854,8 @@ def main():
         Explode.explodes.draw((screen))
         Throw_predict.predicts.draw((screen))
         screen.blit(player.image, player.rect)
-        score.render(screen, (WIDTH - 150, 10))
+        score.render(screen)
+        render_guide(screen)
         pg.display.update()
 
         tmr += 1

@@ -15,14 +15,17 @@
   - A or Light: 左移動
   - D or Right: 右移動
   - Space or Up: ジャンプ
-  - Right Shift: 無敵
-  - Right Ctrl: 予測線表示
+  - Shift: 無敵
+    - 爆風の影響を受けなくなる
+  - Ctrl: 予測線表示
 - マウス
   - Left Click: ハコ発射
   - Right Click: ボム発射
 
 ### スコア
+
 以下のことでスコア上昇！
+
 - 横に進む
 - 敵にタックル
 - 時間経過
@@ -39,6 +42,15 @@
 - プレイヤーに関するクラス
 - ブロックに関するクラス
 
+## ライセンス
+
+- Sound
+  - 魔王魂
+    - [ゲームシーンBGM](https://maou.audio/bgm_8bit15/)
+    - [ゲームオーバーシーンBGM](https://maou.audio/bgm_8bit20/)
+  - 効果音ジーソザイ
+    - [ゲームオーバーSE](https://koukaon.g-sozai.com/se-336.html)
+
 ### 担当追加機能
 
 #### C0A22094
@@ -49,6 +61,8 @@
 - スクロール
 - ゲームオーバー
 - 敵の自動生成
+- 操作方法表示
+- サウンド周り実装
 
 #### C0B21082
 
@@ -70,3 +84,4 @@
 - プレイヤーと敵が投げるBombとExplode
 - 敵の自動攻撃
 - 距離をSCOREに反映
+- 弾道予測線実装
